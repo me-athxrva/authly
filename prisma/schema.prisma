@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model App {
+  id           String        @id @default(cuid())
+  name         String
+  slug         String        @unique
+  publicKey    String        @unique
+  isActive     Boolean       @default(true)
+  adminId      String
+  admin        Admin         @relation(fields: [adminId], references: [id])
+  authType     AuthType      @default(JWT)
+  jwtConfig    AppJwtConfig?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  apiKeys      ApiKey[]
+  users        User[]
+}
+
+model AppJwtConfig {
+  id         String   @id @default(cuid())
+  privateKey String   @db.Text
+  publicKey  String   @db.Text
+  appId      String   @unique
+  app        App      @relation(fields: [appId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+enum AuthType {
+  JWT
+  SESSION
+}
+
+model Admin {
+
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  firstName String?
+  lastName  String?
+  apps      App[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String
+  password  String
+  firstName String?
+  lastName  String?
+  appId     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  app       App      @relation(fields: [appId], references: [id])
+
+  @@unique([email, appId])
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  key        String    @unique
+  name       String?
+  appId      String
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  app        App       @relation(fields: [appId], references: [id])
+}
+
