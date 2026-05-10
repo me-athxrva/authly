@@ -45,6 +45,8 @@ model Admin {
   password  String
   firstName String?
   lastName  String?
+  isPro     Boolean  @default(false)
+  plan      String   @default("FREE")
   apps      App[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
