@@ -11,8 +11,8 @@ import authRoutes from './routes/auth.routes';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Standard Middlewares
-app.use(helmet());
+// Standard Middlewares — disable crossOriginResourcePolicy so CORS headers are not blocked
+app.use(helmet({ crossOriginResourcePolicy: false }));
 
 // CORS Configuration
 const allowedOrigins = process.env.ALLOWED_ORIGINS
@@ -52,3 +52,5 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
+
+export default app;
