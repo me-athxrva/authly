@@ -63,7 +63,16 @@ router.post('/logout', authController.logout);
  */
 router.get('/me', userAuthMiddleware, authController.getMe);
 
+/**
+ * @route GET /api/auth/admin-apps
+ * @desc Get apps owned by admin (Admin only)
+ */
+router.get('/admin-apps', adminAuthMiddleware, authController.getAdminApps);
 
-
+/**
+ * @route GET /api/auth/admin-profile
+ * @desc Get admin profile (Admin only)
+ */
+router.get('/admin-profile', adminAuthMiddleware, authController.getAdminProfile);
 
 export default router;

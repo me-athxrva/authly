@@ -39,7 +39,7 @@ const createSession = async (res: Response, user: any, app: any) => {
   res.cookie('sessionId', sessionId, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'none',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: 24 * 60 * 60 * 1000,
   });
   
@@ -276,7 +276,7 @@ export const registerUser = async (req: Request, res: Response, next: NextFuncti
     res.cookie('userRefreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'none',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
 
@@ -354,7 +354,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
     res.cookie('userRefreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'none',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
 
@@ -394,7 +394,7 @@ export const adminLogin = async (req: Request, res: Response, next: NextFunction
     res.cookie('adminRefreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'none',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
 
@@ -548,6 +548,69 @@ export const getMe = async (req: AuthRequest, res: Response, next: NextFunction)
     res.json({
       user,
       status: 'success'
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAdminApps = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const adminId = req.adminId;
+    if (!adminId) {
+      return res.status(401).json({ message: 'Admin not authenticated', status: 'failed' });
+    }
+
+    const apps = await prisma.app.findMany({
+      where: { adminId },
+      include: {
+        apiKeys: {
+          select: {
+            key: true,
+            name: true,
+            createdAt: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({
+      apps,
+      status: 'success',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAdminProfile = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const adminId = req.adminId;
+    if (!adminId) {
+      return res.status(401).json({ message: 'Admin not authenticated', status: 'failed' });
+    }
+
+    const admin = await prisma.admin.findUnique({
+      where: { id: adminId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        isPro: true,
+        plan: true,
+        createdAt: true,
+      },
+    });
+
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found', status: 'failed' });
+    }
+
+    res.json({
+      admin,
+      status: 'success',
     });
   } catch (error) {
     next(error);
