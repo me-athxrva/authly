@@ -11,8 +11,8 @@ import authRoutes from './routes/auth.routes';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Standard Middlewares — disable crossOriginResourcePolicy so CORS headers are not blocked
-app.use(helmet({ crossOriginResourcePolicy: false }));
+// Standard Middlewares
+app.use(helmet());
 
 // CORS Configuration
 const allowedOrigins = process.env.ALLOWED_ORIGINS
@@ -21,7 +21,6 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
     if (!origin) return callback(null, true);
     if (allowedOrigins.length === 0 || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
       callback(null, true);
