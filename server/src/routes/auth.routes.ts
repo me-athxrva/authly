@@ -75,4 +75,10 @@ router.get('/admin-apps', adminAuthMiddleware, authController.getAdminApps);
  */
 router.get('/admin-profile', adminAuthMiddleware, authController.getAdminProfile);
 
+/**
+ * @route GET /api/auth/admin-dashboard
+ * @desc Get all data for admin dashboard (Profile, Apps, keys, and paginated users for selected app)
+ */
+router.get('/admin-dashboard', adminAuthMiddleware, authController.getAdminDashboard);
+
 export default router;

@@ -617,4 +617,139 @@ export const getAdminProfile = async (req: AuthRequest, res: Response, next: Nex
   }
 };
 
+export const getAdminDashboard = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const adminId = req.adminId;
+    if (!adminId) {
+      return res.status(401).json({ message: 'Admin not authenticated', status: 'failed' });
+    }
+
+    // 1. Fetch admin profile
+    const adminPromise = prisma.admin.findUnique({
+      where: { id: adminId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        isPro: true,
+        plan: true,
+        createdAt: true,
+      },
+    });
+
+    // 2. Fetch all apps owned by this admin
+    const appsPromise = prisma.app.findMany({
+      where: { adminId },
+      include: {
+        apiKeys: {
+          select: {
+            key: true,
+            name: true,
+            createdAt: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const [admin, apps] = await Promise.all([adminPromise, appsPromise]);
+
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found', status: 'failed' });
+    }
+
+    // 3. Determine selected app (by appId, appSlug, or defaulting to first app)
+    const queryAppId = req.query.appId as string;
+    const queryAppSlug = req.query.appSlug as string;
+    
+    let selectedApp = null;
+    if (queryAppId) {
+      selectedApp = apps.find(a => a.id === queryAppId) || null;
+    } else if (queryAppSlug) {
+      selectedApp = apps.find(a => a.slug === queryAppSlug) || null;
+    } else if (apps.length > 0) {
+      selectedApp = apps[0];
+    }
+
+    // 4. Fetch paginated users for the selected app (if any)
+    let users: any[] = [];
+    let pagination = {
+      total: 0,
+      page: 1,
+      limit: 10,
+      totalPages: 0,
+    };
+
+    if (selectedApp) {
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+      const search = (req.query.search as string) || '';
+      
+      const skip = (page - 1) * limit;
+
+      const whereClause: any = {
+        appId: selectedApp.id,
+      };
+
+      if (search) {
+        whereClause.OR = [
+          { email: { contains: search, mode: 'insensitive' } },
+          { firstName: { contains: search, mode: 'insensitive' } },
+          { lastName: { contains: search, mode: 'insensitive' } },
+        ];
+      }
+
+      const [usersList, totalUsers] = await Promise.all([
+        prisma.user.findMany({
+          where: whereClause,
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+        }),
+        prisma.user.count({ where: whereClause }),
+      ]);
+
+      users = usersList;
+      pagination = {
+        total: totalUsers,
+        page,
+        limit,
+        totalPages: Math.ceil(totalUsers / limit),
+      };
+    }
+
+    res.json({
+      admin,
+      apps,
+      selectedApp: selectedApp ? {
+        id: selectedApp.id,
+        name: selectedApp.name,
+        slug: selectedApp.slug,
+        publicKey: selectedApp.publicKey,
+        authType: selectedApp.authType,
+        isActive: selectedApp.isActive,
+        createdAt: selectedApp.createdAt,
+      } : null,
+      users,
+      pagination,
+      status: 'success',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+
 
