@@ -11,6 +11,9 @@ import authRoutes from './routes/auth.routes';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy for rate limiting 
+app.set('trust proxy', 1);
+
 // Standard Middlewares
 app.use(helmet());
 
