@@ -7,6 +7,8 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { errorHandler } from './middlewares/error.middleware';
 import authRoutes from './routes/auth.routes';
+import prisma from './lib/prisma';
+import redis from './lib/redis';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -38,8 +40,54 @@ app.use(cookieParser());
 
 
 // Health Check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+  const dbStart = Date.now();
+  let dbStatus = 'up';
+  let dbLatency: number | null = null;
+  let dbError: string | undefined;
+
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    dbLatency = Date.now() - dbStart;
+  } catch (error: any) {
+    dbStatus = 'down';
+    dbError = error.message || String(error);
+  }
+
+  const redisStart = Date.now();
+  let redisStatus = 'up';
+  let redisLatency: number | null = null;
+  let redisError: string | undefined;
+
+  try {
+    const pong = await redis.ping();
+    if (pong !== 'PONG') {
+      throw new Error(`Unexpected ping response: ${pong}`);
+    }
+    redisLatency = Date.now() - redisStart;
+  } catch (error: any) {
+    redisStatus = 'down';
+    redisError = error.message || String(error);
+  }
+
+  const isHealthy = dbStatus === 'up' && redisStatus === 'up';
+
+  res.status(isHealthy ? 200 : 503).json({
+    status: isHealthy ? 'healthy' : 'unhealthy',
+    timestamp: new Date().toISOString(),
+    services: {
+      database: {
+        status: dbStatus,
+        latency: dbLatency !== null ? `${dbLatency}ms` : null,
+        ...(dbError && { error: dbError })
+      },
+      redis: {
+        status: redisStatus,
+        latency: redisLatency !== null ? `${redisLatency}ms` : null,
+        ...(redisError && { error: redisError })
+      }
+    }
+  });
 });
 
 // Routes
