@@ -24,17 +24,38 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
   : [];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.length === 0 || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
+const corsOptionsDelegate: cors.CorsOptionsDelegate<express.Request> = (req, callback) => {
+  const restrictedPaths = [
+    '/api/auth/admin-login',
+    '/api/auth/register-admin',
+    '/api/auth/create-app'
+  ];
+
+  let corsOptions: cors.CorsOptions;
+
+  if (restrictedPaths.includes(req.path)) {
+    corsOptions = {
+      origin: (origin, cb) => {
+        if (!origin) return cb(null, true);
+        if (allowedOrigins.length === 0 || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+          cb(null, true);
+        } else {
+          cb(new Error('Not allowed by CORS'));
+        }
+      },
+      credentials: true
+    };
+  } else {
+    corsOptions = {
+      origin: true,
+      credentials: true
+    };
+  }
+
+  callback(null, corsOptions);
+};
+
+app.use(cors(corsOptionsDelegate));
 app.use(express.json());
 app.use(cookieParser());
 
