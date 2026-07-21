@@ -15,12 +15,44 @@ This document provides details for all available API endpoints in the Authly mul
 
 ### Health Check
 - **Endpoint**: `GET /health`
-- **Description**: Returns the current server status.
+- **Description**: Performs live health and latency checks on backend services (PostgreSQL database via Prisma and Redis).
 - **Auth**: None
-- **Response**:
-  ```json
-  { "status": "ok", "timestamp": "2024-01-01T00:00:00.000Z" }
-  ```
+- **Responses**:
+  - `200 OK` *(All services healthy)*:
+    ```json
+    {
+      "status": "healthy",
+      "timestamp": "2026-07-21T10:32:00.000Z",
+      "services": {
+        "database": {
+          "status": "up",
+          "latency": "2ms"
+        },
+        "redis": {
+          "status": "up",
+          "latency": "1ms"
+        }
+      }
+    }
+    ```
+  - `503 Service Unavailable` *(One or more services down)*:
+    ```json
+    {
+      "status": "unhealthy",
+      "timestamp": "2026-07-21T10:32:00.000Z",
+      "services": {
+        "database": {
+          "status": "down",
+          "latency": null,
+          "error": "Connection error details..."
+        },
+        "redis": {
+          "status": "up",
+          "latency": "1ms"
+        }
+      }
+    }
+    ```
 
 ---
 
@@ -41,20 +73,32 @@ Registers a new platform administrator account.
     "email": "admin@example.com",
     "password": "securepassword123",
     "firstName": "John",
-    "lastName": "Doe"
+    "lastName": "Doe",
+    "isPro": false,
+    "plan": "FREE"
   }
   ```
-  > `firstName` and `lastName` are optional.
+  > `firstName`, `lastName`, `isPro` (default `false`), and `plan` (default `"FREE"`) are optional.
 
 - **Responses**:
   - `201 Created`:
     ```json
     {
       "message": "Admin registered successfully",
-      "admin": { "id": "...", "email": "..." }
+      "admin": {
+        "id": "...",
+        "email": "admin@example.com"
+      },
+      "status": "success"
     }
     ```
-  - `400 Bad Request`: Email already registered.
+  - `400 Bad Request`:
+    ```json
+    {
+      "message": "Email already registered",
+      "status": "failed"
+    }
+    ```
 
 ---
 
@@ -80,7 +124,13 @@ Authenticates a platform administrator.
     }
     ```
     > Sets an `httpOnly` cookie named `adminRefreshToken` (24h expiry). Cookie uses `SameSite=None; Secure` in production and `SameSite=Lax` in development.
-  - `401 Unauthorized`: Invalid credentials.
+  - `401 Unauthorized`:
+    ```json
+    {
+      "message": "Invalid credentials",
+      "status": "failed"
+    }
+    ```
 
 ---
 
@@ -95,8 +145,20 @@ Issues a new access token using a valid refresh token.
   ```
 
 - **Responses**:
-  - `200 OK`: `{ "accessToken": "...", "status": "success" }`
-  - `401 Unauthorized`: Invalid or expired refresh token.
+  - `200 OK`:
+    ```json
+    {
+      "accessToken": "...",
+      "status": "success"
+    }
+    ```
+  - `400 Bad Request` / `401 Unauthorized`:
+    ```json
+    {
+      "message": "Refresh token is required" | "Refresh token has been revoked" | "Invalid or expired refresh token",
+      "status": "failed"
+    }
+    ```
 
 ---
 
@@ -121,7 +183,7 @@ Returns the profile of the currently authenticated administrator.
       "status": "success"
     }
     ```
-  - `401 Unauthorized`: Token missing or invalid.
+  - `401 Unauthorized`: Token missing, blacklisted, or invalid.
   - `404 Not Found`: Admin record not found.
 
 ---
@@ -159,7 +221,13 @@ Creates a new application workspace under the authenticated admin.
     ```
   - `400 Bad Request`: App slug already taken.
   - `401 Unauthorized`: Token missing or invalid.
-  - `403 Forbidden`: Requester is not an admin.
+  - `403 Forbidden` *(Free tier limit reached)*:
+    ```json
+    {
+      "message": "Free tier limit reached. You can only create 1 app. Upgrade to Pro for unlimited apps.",
+      "status": "failed"
+    }
+    ```
 
 ---
 
@@ -185,7 +253,7 @@ Returns all application workspaces owned by the authenticated admin, including t
           "apiKeys": [
             {
               "key": "sk_...",
-              "name": "Default",
+              "name": "Default Secret Key",
               "createdAt": "..."
             }
           ]
@@ -195,6 +263,66 @@ Returns all application workspaces owned by the authenticated admin, including t
     }
     ```
   - `401 Unauthorized`: Token missing or invalid.
+
+---
+
+### Get Admin Dashboard
+Returns complete admin dashboard data: admin profile, list of owned apps, selected app details, and a paginated list of end-users for the selected app.
+
+- **Endpoint**: `GET /api/auth/admin-dashboard`
+- **Auth**: `Authorization: Bearer <adminAccessToken>` *(required)*
+- **Query Parameters**:
+  | Parameter | Type | Required | Description |
+  |-----------|------|----------|-------------|
+  | `appId` | String | Optional | Select app by ID |
+  | `appSlug` | String | Optional | Select app by slug |
+  | `page` | Integer | Optional | Page number for end-user pagination (default: `1`) |
+  | `limit` | Integer | Optional | Number of users per page (default: `10`) |
+  | `search` | String | Optional | Search query filtering users by email, firstName, or lastName |
+
+- **Responses**:
+  - `200 OK`:
+    ```json
+    {
+      "admin": {
+        "id": "...",
+        "email": "admin@example.com",
+        "firstName": "John",
+        "lastName": "Doe",
+        "isPro": true,
+        "plan": "PRO",
+        "createdAt": "..."
+      },
+      "apps": [ ... ],
+      "selectedApp": {
+        "id": "...",
+        "name": "My SaaS",
+        "slug": "my-saas",
+        "publicKey": "pk_...",
+        "authType": "JWT",
+        "isActive": true,
+        "createdAt": "..."
+      },
+      "users": [
+        {
+          "id": "...",
+          "email": "user@example.com",
+          "firstName": "Jane",
+          "lastName": "Doe",
+          "createdAt": "..."
+        }
+      ],
+      "pagination": {
+        "total": 1,
+        "page": 1,
+        "limit": 10,
+        "totalPages": 1
+      },
+      "status": "success"
+    }
+    ```
+  - `401 Unauthorized`: Token missing or invalid.
+  - `404 Not Found`: Admin record not found.
 
 ---
 
@@ -219,7 +347,7 @@ Registers a new end-user within a specific application tenant.
   > `firstName` and `lastName` are optional.
 
 - **Responses**:
-  - `201 Created`:
+  - `201 Created` *(JWT App)*:
     ```json
     {
       "message": "User registered successfully",
@@ -227,8 +355,17 @@ Registers a new end-user within a specific application tenant.
       "status": "success"
     }
     ```
-    > Sets an `httpOnly` cookie named `userRefreshToken`.
-  - `400 Bad Request`: User already exists in this app.
+    > Sets an `httpOnly` cookie named `userRefreshToken` (24h expiry).
+  - `201 Created` *(SESSION App)*:
+    ```json
+    {
+      "message": "User registered successfully (Session started)",
+      "status": "success"
+    }
+    ```
+    > Sets an `httpOnly` cookie named `sessionId` (24h expiry in Redis & Cookie).
+  - `400 Bad Request`: `x-public-key` header missing or user already registered in this app.
+  - `403 Forbidden`: App access has been revoked (`app.isActive` is `false`).
   - `404 Not Found`: App not found.
 
 ---
@@ -251,7 +388,7 @@ Authenticates an end-user within a specific application tenant.
   ```
 
 - **Responses**:
-  - `200 OK`:
+  - `200 OK` *(JWT App)*:
     ```json
     {
       "accessToken": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -259,8 +396,17 @@ Authenticates an end-user within a specific application tenant.
     }
     ```
     > Sets an `httpOnly` cookie named `userRefreshToken`. The access token is signed with the **app's RS256 private key** (not the global secret).
+  - `200 OK` *(SESSION App)*:
+    ```json
+    {
+      "message": "Login successful (Session started)",
+      "status": "success"
+    }
+    ```
+    > Sets an `httpOnly` cookie named `sessionId`.
   - `400 Bad Request`: `x-public-key` header missing.
   - `401 Unauthorized`: Invalid credentials.
+  - `403 Forbidden`: App access has been revoked (`app.isActive` is `false`).
   - `404 Not Found`: App not found.
 
 ---
@@ -277,7 +423,7 @@ Issues a new user access token from a valid refresh token.
 
 - **Responses**:
   - `200 OK`: `{ "accessToken": "...", "status": "success" }`
-  - `401 Unauthorized`: Invalid or expired refresh token.
+  - `401 Unauthorized`: Refresh token revoked, blacklisted, or expired.
 
 ---
 
@@ -306,7 +452,8 @@ Returns the profile of the currently authenticated end-user.
       "status": "success"
     }
     ```
-  - `401 Unauthorized`: Token revoked, expired, or session invalid.
+  - `401 Unauthorized`: Token revoked/expired, session invalid, or authentication missing.
+  - `403 Forbidden`: Session does not match the app associated with the provided `x-public-key`.
   - `404 Not Found`: User not found.
 
 ---
@@ -327,7 +474,7 @@ Universal logout endpoint for both admins and tenant users.
 | Header | Used By | Description |
 |--------|---------|-------------|
 | `x-public-key` | Tenant endpoints | Identifies the target application. Required for all user-scoped routes (login, register, refresh, me). |
-| `Authorization` | Admin endpoints | `Bearer <accessToken>`. Required for protected admin routes. |
+| `Authorization` | Admin & JWT User endpoints | `Bearer <accessToken>`. Required for protected routes. |
 | `Content-Type` | POST/PUT requests | Must be `application/json`. |
 
 ---
@@ -337,8 +484,8 @@ Universal logout endpoint for both admins and tenant users.
 | Cookie Name | Set By | Expiry | Scope |
 |-------------|--------|--------|-------|
 | `adminRefreshToken` | Admin login | 24 hours | Admin token refresh |
-| `userRefreshToken` | User login / register | 24 hours | User token refresh |
-| `sessionId` | Session-type app login | 24 hours | Session-based auth |
+| `userRefreshToken` | User login / register (JWT apps) | 24 hours | User token refresh |
+| `sessionId` | User login / register (SESSION apps) | 24 hours | Session-based auth |
 
 > All cookies are `httpOnly`, preventing JavaScript access. In production they require `Secure` (HTTPS) and `SameSite=None` for cross-origin requests. In development, `SameSite=Lax` is used.
 
@@ -351,7 +498,7 @@ Access tokens are short-lived (**15 minutes**). When one expires the API returns
 ### Recommended Flow
 
 1. **Monitor Responses** — intercept all `401` errors on protected requests.
-2. **Silent Refresh** — call `POST /api/auth/refresh` (cookies are sent automatically if `credentials: "include"` is set).
+2. **Silent Refresh** — call `POST /api/auth/refresh` (or `/api/auth/admin-refresh` for admins; cookies are sent automatically if `credentials: "include"` is set).
 3. **Retry** — store the new `accessToken` and replay the original request.
 4. **Re-authenticate** — if the refresh also returns `401`, the session is fully expired (24h). Redirect to login.
 
@@ -389,7 +536,7 @@ api.interceptors.response.use(
 
     return Promise.reject(error);
   }
-);
+}
 ```
 
 ### Example — Fetch (native)
@@ -438,13 +585,127 @@ async function authFetch(url, options = {}) {
 
 ## 6. CORS Configuration
 
-The server reads allowed frontend origins from the `ALLOWED_ORIGINS` environment variable (comma-separated).
+The server configures CORS dynamically. For sensitive administrative endpoints (`/api/auth/admin-login`, `/api/auth/register-admin`, `/api/auth/create-app`), origin checking is enforced against origins listed in the `ALLOWED_ORIGINS` environment variable (comma-separated):
 
 ```env
 # server/.env
 ALLOWED_ORIGINS=http://localhost:5173,https://your-frontend.vercel.app
 ```
 
-If `ALLOWED_ORIGINS` is not set, all origins are permitted (suitable for local development only).
+For public tenant endpoints, cross-origin access is permitted while allowing credentials (`credentials: true`).
 
-All fetch/axios calls from the frontend must include `credentials: "include"` (or `withCredentials: true`) for cookies to be sent and received across origins.
+All fetch/axios requests from the frontend must include `credentials: "include"` (or `withCredentials: true`) for cookies to be sent and received across origins.
+
+---
+
+## 7. Production Axios Integration Template
+
+Third-party application developers can copy and drop this full `authlyClient.ts` module into their codebase to handle all tenant authentication interactions with Authly:
+
+```typescript
+import axios from "axios";
+
+const AUTHLY_URL = "http://localhost:3000"; // Replace with your Authly server URL
+const PUBLIC_KEY = "pk_your_app_public_key_here"; // Replace with your tenant App Public Key
+
+// 1. Create a pre-configured Axios instance
+export const authlyClient = axios.create({
+  baseURL: AUTHLY_URL,
+  withCredentials: true, // Crucial: automatically sends/receives httpOnly cookies (userRefreshToken / sessionId)
+  headers: {
+    "Content-Type": "application/json",
+    "x-public-key": PUBLIC_KEY,
+  },
+});
+
+let accessToken: string | null = localStorage.getItem("authly_token");
+
+export const setToken = (token: string | null) => {
+  accessToken = token;
+  if (token) {
+    localStorage.setItem("authly_token", token);
+  } else {
+    localStorage.removeItem("authly_token");
+  }
+};
+
+// 2. Request Interceptor: Dynamically attach Bearer token if present
+authlyClient.interceptors.request.use((config) => {
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
+  }
+  return config;
+});
+
+// 3. Response Interceptor: Perform automatic silent token refresh on 401 Unauthorized
+authlyClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const { data } = await axios.post(
+          `${AUTHLY_URL}/api/auth/refresh`,
+          {},
+          {
+            withCredentials: true,
+            headers: { "x-public-key": PUBLIC_KEY },
+          }
+        );
+
+        if (data?.accessToken) {
+          setToken(data.accessToken);
+          originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+          return authlyClient(originalRequest);
+        }
+      } catch (refreshError) {
+        setToken(null);
+        window.location.href = "/login";
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// --- Exported Auth Helper Methods ---
+
+/** Register a new user under your application tenant */
+export const registerUser = async (userData: {
+  email: string;
+  password: string;
+  firstName?: string;
+  lastName?: string;
+}) => {
+  const { data } = await authlyClient.post("/api/auth/register-user", userData);
+  if (data.accessToken) setToken(data.accessToken);
+  return data;
+};
+
+/** Authenticate an end-user within your tenant */
+export const loginUser = async (credentials: { email: string; password: string }) => {
+  const { data } = await authlyClient.post("/api/auth/login", credentials);
+  if (data.accessToken) setToken(data.accessToken);
+  return data;
+};
+
+/** Retrieve current authenticated user profile */
+export const getUserProfile = async () => {
+  const { data } = await authlyClient.get("/api/auth/me");
+  return data.user;
+};
+
+/** Log out current user and clear tokens/cookies */
+export const logoutUser = async () => {
+  try {
+    await authlyClient.post("/api/auth/logout");
+  } finally {
+    setToken(null);
+  }
+};
+```
+
