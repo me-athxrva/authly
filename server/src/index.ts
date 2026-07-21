@@ -21,7 +21,7 @@ app.use(helmet());
 
 // CORS Configuration
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim().replace(/^["']|["']$/g, ''))
   : [];
 
 const corsOptionsDelegate: cors.CorsOptionsDelegate<express.Request> = (req, callback) => {
