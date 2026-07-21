@@ -19,7 +19,7 @@ interface ParamItem {
 
 interface DocSection {
   id: string;
-  category: "General" | "Authentication";
+  category: "General" | "Authentication" | "Integration";
   title: string;
   desc: string;
   method?: "GET" | "POST" | null;
@@ -28,6 +28,7 @@ interface DocSection {
   params?: ParamItem[];
   requestBody?: string;
   responseSuccess?: string;
+  codeTemplate?: string;
 }
 
 const docSections: DocSection[] = [
@@ -153,6 +154,95 @@ const docSections: DocSection[] = [
   "message": "Logged out successfully",
   "status": "success"
 }`
+  },
+  {
+    id: "axios-template",
+    category: "Integration",
+    title: "Axios SDK / Template",
+    desc: "Copy-pasteable Axios client module for third-party tenant apps. Pre-configured with automatic public key headers, credentials (httpOnly cookies), and a 401 response interceptor for silent token refresh.",
+    method: null,
+    path: null,
+    codeTemplate: `import axios from "axios";
+
+const AUTHLY_URL = "http://localhost:3000"; // Or process.env.VITE_AUTHLY_URL
+const PUBLIC_KEY = "pk_your_app_public_key_here";
+
+// 1. Create configured Axios client instance
+export const authlyClient = axios.create({
+  baseURL: AUTHLY_URL,
+  withCredentials: true, // Sends and receives httpOnly cookies (userRefreshToken / sessionId)
+  headers: {
+    "Content-Type": "application/json",
+    "x-public-key": PUBLIC_KEY,
+  },
+});
+
+let accessToken: string | null = localStorage.getItem("authly_token");
+
+export const setToken = (token: string | null) => {
+  accessToken = token;
+  if (token) localStorage.setItem("authly_token", token);
+  else localStorage.removeItem("authly_token");
+};
+
+// 2. Request Interceptor: Attach Bearer Access Token
+authlyClient.interceptors.request.use((config) => {
+  if (accessToken) {
+    config.headers.Authorization = \`Bearer \${accessToken}\`;
+  }
+  return config;
+});
+
+// 3. Response Interceptor: Silent Token Refresh on 401 Unauthorized
+authlyClient.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const originalRequest = error.config;
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      try {
+        const { data } = await axios.post(
+          \`\${AUTHLY_URL}/api/auth/refresh\`,
+          {},
+          {
+            withCredentials: true,
+            headers: { "x-public-key": PUBLIC_KEY },
+          }
+        );
+        if (data?.accessToken) {
+          setToken(data.accessToken);
+          originalRequest.headers.Authorization = \`Bearer \${data.accessToken}\`;
+          return authlyClient(originalRequest);
+        }
+      } catch (refreshErr) {
+        setToken(null);
+        window.location.href = "/login";
+        return Promise.reject(refreshErr);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+// --- Exported Auth Helper Methods ---
+
+export const registerUser = (userData: { email: string; password: string; firstName?: string; lastName?: string }) =>
+  authlyClient.post("/api/auth/register-user", userData).then((res) => {
+    if (res.data.accessToken) setToken(res.data.accessToken);
+    return res.data;
+  });
+
+export const loginUser = (credentials: { email: string; password: string }) =>
+  authlyClient.post("/api/auth/login", credentials).then((res) => {
+    if (res.data.accessToken) setToken(res.data.accessToken);
+    return res.data;
+  });
+
+export const getProfile = () =>
+  authlyClient.get("/api/auth/me").then((res) => res.data.user);
+
+export const logoutUser = () =>
+  authlyClient.post("/api/auth/logout").finally(() => setToken(null));`
   }
 ];
 
@@ -518,7 +608,7 @@ export default function Docs() {
           <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">API Reference</span>
         </div>
         <nav className="flex-1 overflow-y-auto px-4 pb-6 space-y-4">
-          {["General", "Authentication"].map((cat) => (
+          {["General", "Authentication", "Integration"].map((cat) => (
             <div key={cat} className="space-y-1.5">
               <h4 className="px-3 text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest pt-4 pb-1">
                 {cat}
@@ -576,7 +666,7 @@ export default function Docs() {
             className="md:hidden fixed top-[113px] left-0 right-0 bottom-0 z-20 bg-background/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800/60 p-6 overflow-y-auto"
           >
             <nav className="space-y-6">
-              {["General", "Authentication"].map((cat) => (
+              {["General", "Authentication", "Integration"].map((cat) => (
                 <div key={cat} className="space-y-1.5">
                   <h4 className="text-[10px] font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest pt-4 pb-1">
                     {cat}
@@ -694,6 +784,38 @@ export default function Docs() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              )}
+
+              {activeDoc.codeTemplate && (
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Axios Integration Module (`authlyClient.ts`)</span>
+                    <button
+                      onClick={() => handleCopy(activeDoc.codeTemplate || "", "template")}
+                      className="text-xs text-zinc-400 hover:text-zinc-200 transition-colors flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900"
+                    >
+                      {copiedText === "template" ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-green-500" />
+                          <span className="text-green-500 font-medium text-xs">Copied Code!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5" />
+                          <span className="font-medium text-xs">Copy Template Code</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="border border-zinc-200/80 dark:border-zinc-800/60 rounded-2xl overflow-hidden bg-[#030303] text-zinc-300">
+                    <div className="flex justify-between items-center bg-zinc-950 px-4 py-2.5 border-b border-zinc-900">
+                      <span className="text-[10px] font-mono text-zinc-500">authlyClient.ts</span>
+                    </div>
+                    <pre className="p-4 font-mono text-xs overflow-x-auto leading-relaxed max-h-[500px]">
+                      <HighlightedCode code={activeDoc.codeTemplate} />
+                    </pre>
                   </div>
                 </div>
               )}
