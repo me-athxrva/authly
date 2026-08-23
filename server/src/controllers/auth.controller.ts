@@ -188,6 +188,7 @@ export const createApp = async (
         name: app.name,
         slug: app.slug,
         publicKey: app.publicKey,
+        jwtPublicKey: rsaKeys.publicKey,
         secretKey: secretKey,
         authType: app.authType,
       },
@@ -571,12 +572,22 @@ export const getAdminApps = async (req: AuthRequest, res: Response, next: NextFu
             createdAt: true,
           },
         },
+        jwtConfig: {
+          select: {
+            publicKey: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
 
+    const formattedApps = apps.map(app => ({
+      ...app,
+      jwtPublicKey: app.jwtConfig?.publicKey,
+    }));
+
     res.json({
-      apps,
+      apps: formattedApps,
       status: 'success',
     });
   } catch (error) {
@@ -651,6 +662,11 @@ export const getAdminDashboard = async (
             key: true,
             name: true,
             createdAt: true,
+          },
+        },
+        jwtConfig: {
+          select: {
+            publicKey: true,
           },
         },
       },
@@ -730,20 +746,72 @@ export const getAdminDashboard = async (
       };
     }
 
+    const formattedApps = apps.map(app => ({
+      ...app,
+      jwtPublicKey: app.jwtConfig?.publicKey,
+    }));
+
     res.json({
       admin,
-      apps,
+      apps: formattedApps,
       selectedApp: selectedApp ? {
         id: selectedApp.id,
         name: selectedApp.name,
         slug: selectedApp.slug,
         publicKey: selectedApp.publicKey,
+        jwtPublicKey: selectedApp.jwtConfig?.publicKey,
         authType: selectedApp.authType,
         isActive: selectedApp.isActive,
         createdAt: selectedApp.createdAt,
+        apiKeys: selectedApp.apiKeys,
       } : null,
       users,
       pagination,
+      status: 'success',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getJwtPublicKey = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const publicKeyHeader = req.headers['x-public-key'] as string;
+    const queryPublicKey = req.query.publicKey as string;
+    const queryAppSlug = req.query.appSlug as string;
+    const queryAppId = req.query.appId as string;
+
+    const keyOrIdentifier = publicKeyHeader || queryPublicKey;
+
+    let whereClause: any = {};
+    if (keyOrIdentifier) {
+      whereClause = { publicKey: keyOrIdentifier };
+    } else if (queryAppSlug) {
+      whereClause = { slug: queryAppSlug };
+    } else if (queryAppId) {
+      whereClause = { id: queryAppId };
+    } else {
+      return res.status(400).json({
+        message: 'App identifier required via x-public-key header, or publicKey/appSlug/appId query parameter',
+        status: 'failed',
+      });
+    }
+
+    const app = await prisma.app.findFirst({
+      where: {
+        ...whereClause,
+        adminId: req.adminId,
+      },
+      include: { jwtConfig: true },
+    });
+
+    if (!app || !app.jwtConfig) {
+      return res.status(404).json({ message: 'App or JWT configuration not found', status: 'failed' });
+    }
+
+    res.json({
+      publicKey: app.jwtConfig.publicKey,
+      algorithm: 'RS256',
       status: 'success',
     });
   } catch (error) {

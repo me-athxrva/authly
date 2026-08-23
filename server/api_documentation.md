@@ -458,6 +458,33 @@ Returns the profile of the currently authenticated end-user.
 
 ---
 
+### Get JWT Public Key
+Returns the RSA public key (in PEM format) used to sign RS256 JWT access tokens for a specific application. Third-party backends use this key to verify token authenticity and claims locally without making RPC calls back to Authly.
+
+- **Endpoint**: `GET /api/auth/jwt-public-key`
+- **Auth**: Protected (Admin Bearer Token: `Authorization: Bearer <admin_access_token>`)
+- **Headers / Query Parameters**:
+  - `Authorization` header: `Bearer <admin_access_token>` (Mandatory)
+  - Provide an application identifier using one of:
+    - `x-public-key` header (e.g. `pk_...`)
+    - `publicKey` query parameter (e.g. `?publicKey=pk_...`)
+    - `appSlug` query parameter (e.g. `?appSlug=my-app`)
+    - `appId` query parameter (e.g. `?appId=cuid...`)
+- **Responses**:
+  - `200 OK`:
+    ```json
+    {
+      "publicKey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END PUBLIC KEY-----",
+      "algorithm": "RS256",
+      "status": "success"
+    }
+    ```
+  - `400 Bad Request`: App identifier missing.
+  - `401 Unauthorized`: Missing or invalid admin Bearer token.
+  - `404 Not Found`: App or JWT configuration not found (or does not belong to authenticated admin).
+
+---
+
 ### Logout
 Universal logout endpoint for both admins and tenant users.
 

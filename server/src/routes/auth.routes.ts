@@ -81,4 +81,10 @@ router.get('/admin-profile', adminAuthMiddleware, authController.getAdminProfile
  */
 router.get('/admin-dashboard', adminAuthMiddleware, authController.getAdminDashboard);
 
+/**
+ * @route GET /api/auth/jwt-public-key
+ * @desc Fetch RSA public key for validating app JWT tokens (Admin only)
+ */
+router.get('/jwt-public-key', adminAuthMiddleware, authController.getJwtPublicKey);
+
 export default router;

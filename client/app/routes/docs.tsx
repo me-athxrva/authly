@@ -87,6 +87,23 @@ const docSections: DocSection[] = [
 }`
   },
   {
+    id: "jwt-public-key",
+    category: "Authentication",
+    title: "Get JWT Public Key",
+    desc: "Retrieves the tenant's RSA Public Key (PEM format) used for locally verifying RS256 JWT signatures on your backend services. Requires Admin Bearer authentication.",
+    method: "GET",
+    path: "/api/auth/jwt-public-key",
+    headers: [
+      { name: "Authorization", description: "Mandatory. Bearer <admin_access_token>." },
+      { name: "x-public-key", description: "The app public key identifier (or pass ?publicKey=pk_... / ?appSlug=... as query param)." }
+    ],
+    responseSuccess: `{
+  "publicKey": "-----BEGIN PUBLIC KEY-----\\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\\n-----END PUBLIC KEY-----",
+  "algorithm": "RS256",
+  "status": "success"
+}`
+  },
+  {
     id: "user-login",
     category: "Authentication",
     title: "User Login",

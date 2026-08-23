@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router";
 import type { Route } from "./+types/dashboard";
 import { 
-  Plus, Key, Copy, Eye, EyeOff, LogOut, Loader2, Shield, Laptop, Server, User, Check, Settings, LayoutDashboard, FileText, ChevronRight, ChevronLeft, Search, Users, Mail
+  Plus, Key, Copy, Eye, EyeOff, LogOut, Loader2, Shield, Laptop, Server, User, Check, Settings, LayoutDashboard, FileText, ChevronRight, ChevronLeft, Search, Users, Mail, X
 } from "lucide-react";
 import { toast } from "sonner";
 import { ThemeToggle } from "~/components/ThemeToggle";
@@ -25,6 +25,7 @@ interface App {
   name: string;
   slug: string;
   publicKey: string;
+  jwtPublicKey?: string;
   authType: "JWT" | "SESSION";
   isActive: boolean;
   createdAt: string;
@@ -86,6 +87,7 @@ export default function Dashboard() {
   // UX states
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [revealedSecrets, setRevealedSecrets] = useState<Record<string, boolean>>({});
+  const [pemModalContent, setPemModalContent] = useState<{ appName: string; key: string } | null>(null);
 
   // Token retrieval helper
   const getToken = () => localStorage.getItem("token");
@@ -461,6 +463,36 @@ export default function Dashboard() {
                             </div>
                           </div>
                         </div>
+
+                        {/* RSA JWT Public Key field */}
+                        {app.jwtPublicKey && (
+                          <div className="space-y-1 flex flex-col gap-y-1">
+                            <div className="flex justify-between items-center text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                              <span>RSA JWT Public Key (RS256)</span>
+                              <button
+                                type="button"
+                                onClick={() => setPemModalContent({ appName: app.name, key: app.jwtPublicKey! })}
+                                className="font-mono text-[9px] lowercase text-sky-500 hover:underline cursor-pointer"
+                              >
+                                View Full PEM
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-3 px-3 py-2.5 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-background">
+                              <Key className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              <span className="w-full text-xs font-mono truncate text-foreground/90 select-all">
+                                {app.jwtPublicKey.replace(/\n/g, " ")}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(app.jwtPublicKey!, "RSA JWT Public Key")}
+                                className="p-1 hover:text-foreground text-muted-foreground transition-colors cursor-pointer"
+                                title="Copy RSA Public Key"
+                              >
+                                {copiedKey === app.jwtPublicKey ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div className="pt-4 border-t border-zinc-200/50 dark:border-zinc-800/40 flex items-center justify-between text-xs text-muted-foreground font-light">
@@ -722,6 +754,56 @@ export default function Dashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* PEM Key View Modal Overlay */}
+      {pemModalContent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-xs">
+          <div className="w-full max-w-lg border border-zinc-200 dark:border-zinc-800 rounded-3xl bg-background p-6 sm:p-8 space-y-5 shadow-2xl relative">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <h3 className="text-lg font-normal text-foreground">RSA JWT Public Key</h3>
+                <p className="text-xs text-muted-foreground font-light">
+                  {pemModalContent.appName} — RS256 Verification Key (PEM format)
+                </p>
+              </div>
+              <button
+                onClick={() => setPemModalContent(null)}
+                className="p-1 text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="relative">
+              <pre className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50 dark:bg-zinc-900 font-mono text-[11px] leading-relaxed text-foreground overflow-x-auto max-h-60 select-all whitespace-pre-wrap">
+                {pemModalContent.key}
+              </pre>
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-[10px] text-muted-foreground font-mono">
+                Use this key on your backend to verify RS256 access tokens.
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(pemModalContent.key, "RSA JWT Public Key")}
+                  className="bg-foreground text-background px-4 py-2 rounded-xl text-xs font-semibold hover:opacity-90 flex items-center gap-1.5 transition-all cursor-pointer"
+                >
+                  {copiedKey === pemModalContent.key ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-emerald-500" /> Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" /> Copy PEM Key
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
