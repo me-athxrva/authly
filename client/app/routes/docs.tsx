@@ -445,7 +445,7 @@ function KeyPlayground() {
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Public Key (Client side)</label>
               <div className="flex items-center gap-2 px-3 py-2 border border-zinc-200 dark:border-zinc-800/60 rounded-xl bg-background">
-                <Laptop className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <Laptop className="h-4 w-4 text-muted-foreground shrink-0" />
                 <input
                   type="text"
                   value={publicKey}
@@ -457,7 +457,7 @@ function KeyPlayground() {
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">Secret Key (Server/Edge side)</label>
               <div className="flex items-center gap-2 px-3 py-2 border border-zinc-200 dark:border-zinc-800/60 rounded-xl bg-background">
-                <Server className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <Server className="h-4 w-4 text-muted-foreground shrink-0" />
                 <input
                   type="text"
                   value={secretKey}
@@ -543,7 +543,7 @@ function KeyPlayground() {
           </div>
         </div>
 
-        <div className="border border-zinc-200/80 dark:border-zinc-800/60 rounded-2xl overflow-hidden bg-zinc-950 flex flex-col h-[400px]">
+        <div className="border border-zinc-200/80 dark:border-zinc-800/60 rounded-2xl overflow-hidden bg-zinc-950 flex flex-col h-100">
           <div className="flex items-center justify-between bg-zinc-900/60 px-4 py-3 border-b border-zinc-900">
             <div className="flex items-center gap-2">
               <Terminal className="h-4 w-4 text-zinc-500" />
@@ -619,7 +619,7 @@ export default function Docs() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] w-full overflow-hidden text-foreground bg-transparent transition-colors duration-300">
-      <aside className="hidden md:flex flex-col w-64 border-r border-zinc-200/80 dark:border-zinc-800/60 bg-transparent flex-shrink-0">
+      <aside className="hidden md:flex flex-col w-64 border-r border-zinc-200/80 dark:border-zinc-800/60 bg-transparent shrink-0">
         <div className="px-6 pt-8 pb-4 flex items-center gap-2.5">
           <Terminal className="h-3.5 w-3.5 text-muted-foreground/75" />
           <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">API Reference</span>
@@ -680,7 +680,7 @@ export default function Docs() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="md:hidden fixed top-[113px] left-0 right-0 bottom-0 z-20 bg-background/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800/60 p-6 overflow-y-auto"
+            className="md:hidden fixed top-28.25 left-0 right-0 bottom-0 z-20 bg-background/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800/60 p-6 overflow-y-auto"
           >
             <nav className="space-y-6">
               {["General", "Authentication", "Integration"].map((cat) => (
@@ -830,7 +830,7 @@ export default function Docs() {
                     <div className="flex justify-between items-center bg-zinc-950 px-4 py-2.5 border-b border-zinc-900">
                       <span className="text-[10px] font-mono text-zinc-500">authlyClient.ts</span>
                     </div>
-                    <pre className="p-4 font-mono text-xs overflow-x-auto leading-relaxed max-h-[500px]">
+                    <pre className="p-4 font-mono text-xs overflow-x-auto leading-relaxed max-h-125">
                       <HighlightedCode code={activeDoc.codeTemplate} />
                     </pre>
                   </div>
@@ -862,7 +862,7 @@ export default function Docs() {
                             )}
                           </button>
                         </div>
-                        <pre className="p-4 font-mono text-xs overflow-x-auto leading-relaxed max-h-[300px]">
+                        <pre className="p-4 font-mono text-xs overflow-x-auto leading-relaxed max-h-75">
                           <HighlightedCode code={activeDoc.requestBody} />
                         </pre>
                       </div>
@@ -892,7 +892,7 @@ export default function Docs() {
                             )}
                           </button>
                         </div>
-                        <pre className="p-4 font-mono text-xs overflow-x-auto leading-relaxed max-h-[300px]">
+                        <pre className="p-4 font-mono text-xs overflow-x-auto leading-relaxed max-h-75">
                           <HighlightedCode code={activeDoc.responseSuccess} />
                         </pre>
                       </div>
@@ -902,7 +902,7 @@ export default function Docs() {
               )}
 
               <div className="p-6 border border-zinc-200/80 dark:border-zinc-800/60 rounded-2xl bg-zinc-50/30 dark:bg-zinc-900/10 flex items-start gap-4">
-                <Lock className="h-5 w-5 text-foreground/80 mt-0.5 flex-shrink-0" />
+                <Lock className="h-5 w-5 text-foreground/80 mt-0.5 shrink-0" />
                 <div className="space-y-1">
                   <h4 className="text-sm font-medium text-foreground">Integration Security</h4>
                   <p className="text-xs text-muted-foreground leading-relaxed font-light">

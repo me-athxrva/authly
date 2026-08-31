@@ -257,7 +257,7 @@ export default function Dashboard() {
     <div className="min-h-screen lg:h-screen lg:overflow-hidden w-full bg-background flex flex-col lg:flex-row text-foreground transition-colors duration-300">
       
       {/* Sidebar navigation */}
-      <aside className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800 flex flex-col p-6 space-y-6 flex-shrink-0 bg-zinc-50/50 dark:bg-zinc-950/20 lg:h-full lg:overflow-y-hidden">
+      <aside className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-zinc-200 dark:border-zinc-800 flex flex-col p-6 space-y-6 shrink-0 bg-zinc-50/50 dark:bg-zinc-950/20 lg:h-full lg:overflow-y-hidden">
         <div className="flex items-center justify-between">
           <Link to="/" className="font-normal text-lg tracking-tight hover:opacity-80 transition-opacity">
             authly
@@ -417,7 +417,7 @@ export default function Dashboard() {
                             <span className="font-mono text-[9px] lowercase text-sky-500">x-public-key header</span>
                           </div>
                           <div className="flex items-center gap-3 px-3 py-2.5 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-background">
-                            <Laptop className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                            <Laptop className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                             <span className="w-full text-xs font-mono truncate text-foreground/90 select-all">
                               {app.publicKey}
                             </span>
@@ -439,11 +439,11 @@ export default function Dashboard() {
                             <span className="font-mono text-[9px] lowercase text-amber-500">restrict access</span>
                           </div>
                           <div className="flex items-center gap-3 px-3 py-2.5 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-background">
-                            <Server className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                            <Server className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                             <span className="w-full text-xs font-mono truncate text-foreground/90 select-all">
                               {isRevealed ? secretKey : "••••••••••••••••••••••••••••••••"}
                             </span>
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <div className="flex items-center gap-1.5 shrink-0">
                               <button
                                 type="button"
                                 onClick={() => toggleSecretReveal(app.id)}
@@ -478,7 +478,7 @@ export default function Dashboard() {
                               </button>
                             </div>
                             <div className="flex items-center gap-3 px-3 py-2.5 border border-zinc-200 dark:border-zinc-800 rounded-xl bg-background">
-                              <Key className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                              <Key className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                               <span className="w-full text-xs font-mono truncate text-foreground/90 select-all">
                                 {app.jwtPublicKey.replace(/\n/g, " ")}
                               </span>
@@ -676,7 +676,7 @@ export default function Dashboard() {
       {/* Create App Modal Overlay */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/60 backdrop-blur-xs">
-          <div className="w-full max-w-[440px] border border-zinc-200 dark:border-zinc-800 rounded-3xl bg-background p-6 sm:p-8 space-y-6 shadow-2xl relative">
+          <div className="w-full max-w-110 border border-zinc-200 dark:border-zinc-800 rounded-3xl bg-background p-6 sm:p-8 space-y-6 shadow-2xl relative">
             
             <div className="space-y-1.5">
               <h3 className="text-xl font-normal text-foreground">Create platform app</h3>
